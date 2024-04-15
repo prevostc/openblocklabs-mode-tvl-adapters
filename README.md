@@ -53,5 +53,4 @@ Once you provide the repository, we need to execute the following steps:
 * Check if the output is accordingly wwhat we need.
 * Please create a folder following this pattern: `tvl-snapshot-<protocol_name>`
 * Add in the script `index.ts` a function to read a CSV file with a block list, this [function](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/blob/main/adapters/tvl-snapshot-izumi/src/index.ts#L63)
-* Add in the script `index.ts` the hourly blocks as input for the CSV function, following this pattern `../../../../data/mode_<protocol_name>_hourly_blocks.csv`, [example](https://github.com/delta-hq/openblocklabs-mode-tvl-adaptersblob/main/tvl_adapters/adapters/tvl-snapshot-izumi/src/index.ts#L89)
-* Idem for output file, but following this pattern `../../../../data/mode_<protocol_name>_tvl_snapshot.csv`.
+* Add in the script `index.ts` the hourly blocks as input for the CSV function [example](https://github.com/delta-hq/openblocklabs-mode-tvl-adaptersblob/main/tvl_adapters/adapters/tvl-snapshot-izumi/src/index.ts#L89)
