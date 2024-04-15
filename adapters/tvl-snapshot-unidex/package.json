@@ -1,0 +1,25 @@
+{
+  "name": "poolrewards",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "snapshot": "ts-node script.ts",
+    "pm2": "pm2 start ts-node --name script -c '0 */6 * * *' --no-autorestart -- script.ts",
+    "prod": "NODE_ENV=prod pm2 start src/main.js --name base"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "ethers": "^5.7.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/node": "^20.10.4"
+  }
+}
