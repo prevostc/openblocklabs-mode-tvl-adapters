@@ -181,7 +181,7 @@ async function run() {
     const nftPoolFactoryStartBlock = 3359145; // block first pool was created (subgraph first data block says 3_326_752)
     const v2FactoryBlock = 3326753; // V2 factory first pair creation block 3326753
     // Each block ~1 hour after the previous
-    const csvFilePath = path.resolve(__dirname, '../../../data/mode_swapmodev2_hourly_blocks.csv');
+    const csvFilePath = path.resolve(__dirname, '../../../../data/mode_swapmodev2_hourly_blocks.csv');
     const hourlyBlocks = await readBlocksFromCSV(csvFilePath);
 
     let fileData = [];

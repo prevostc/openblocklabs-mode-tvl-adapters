@@ -85,7 +85,7 @@ const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
 
 
 const getData = async () => {
-  const csvFilePath = path.resolve(__dirname, '../../../data/mode_kimv4_blocks.csv');
+  const csvFilePath = path.resolve(__dirname, '../../../../data/mode_kimv4_blocks.csv');
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
   
   const csvRows: CSVRow[] = [];
@@ -135,7 +135,7 @@ const getData = async () => {
     });
   }
 
-  const outputPath = path.resolve(__dirname, '../../../data/mode_kimv4_tvl_snapshot.parquet');
+  const outputPath = path.resolve(__dirname, '../../../../data/mode_kimv4_tvl_snapshot.parquet');
   const writer = await ParquetWriter.openFile(schema, outputPath);
 
   for (let row of csvRows) {

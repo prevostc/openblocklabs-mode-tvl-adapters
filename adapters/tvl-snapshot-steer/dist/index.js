@@ -59,7 +59,7 @@ const readBlocksFromCSV = async (filePath) => {
     });
 };
 const getData = async () => {
-    const csvFilePath = path.resolve(__dirname, '../../../data/mode_steer_hourly_blocks.csv');
+    const csvFilePath = path.resolve(__dirname, '../../../../data/mode_steer_hourly_blocks.csv');
     const snapshotBlocks = await readBlocksFromCSV(csvFilePath); //await readBlocksFromCSV('src/sdk/mode_chain_daily_blocks.csv');
     let csvRows = [];
     for (let block of snapshotBlocks) {

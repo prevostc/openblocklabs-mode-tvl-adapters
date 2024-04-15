@@ -75,7 +75,7 @@ const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
 
 
 const getData = async () => {
-  const csvFilePath = path.resolve(__dirname, '../../../data/mode_supswapv3_hourly_blocks.csv');
+  const csvFilePath = path.resolve(__dirname, '../../../../data/mode_supswapv3_hourly_blocks.csv');
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
 
   const csvRows: CSVRow[] = [];
@@ -109,7 +109,7 @@ const getData = async () => {
   }
 
   // Write the CSV output to a file
-  const outputPath = path.resolve(__dirname, '../../../data/mode_supswapv3_tvl_snapshot.csv');
+  const outputPath = path.resolve(__dirname, '../../../../data/mode_supswapv3_tvl_snapshot.csv');
   const ws = fs.createWriteStream(outputPath);
   write(csvRows, { headers: true }).pipe(ws).on('finish', () => {
     console.log("CSV file has been written.");
