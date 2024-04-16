@@ -4,7 +4,7 @@ This repository aims to serve as a source for all adapters we use to fetch TVL (
 
 ## How to add new adapters?
 
-The process to add a new adapters is provide a script similar to what you can see here in the [adapter example](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/tree/main/adapters/example/dex). 
+The process to add a new adapters is provide a script similar to what you can see here in the [adapter example](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/tree/main/adapters/example/). 
 
 Here is a onboarding checklist:
 
@@ -13,10 +13,12 @@ Here is a onboarding checklist:
     2. General Steps
         1.  create an account at app.goldsky.com
         2.  deploy a subgraph or migrate an existing subgraph - https://docs.goldsky.com/subgraphs/introduction
-        3.  Use the slugs `linea-testnet` and `linea` when deploying the config
+        3.  Use the slugs `mode-testnet` and `mode` when deploying the config
 2.  Prepare Subquery query code according to the Data Requirement section below.
-3.  Submit your response as a Pull Request to: https://github.com/delta-hq/obl-mode-tvl-snapshot-adapters.git
-    1.  With path being `/<your_protocol_handle>` 
+3.  Submit your response as a Pull Request to: https://github.com/delta-hq/openblocklabs-mode-tvl-adapters.git
+    1.  Copy the `example` adapter and create a new one inside the `adapters` folder following this pattern: `tvl-snapshot-<protocol_name>`
+    2.  Add in the script `index.ts` a function to read a CSV file with a block list, this [function](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/blob/main/adapters/example/src/index.ts#L52)
+    3.  Add in the script `index.ts` the hourly blocks as input for the CSV function [example](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/blob/main/adapters/example/src/index.ts#L78)
 
 
 ### Data Requirements:
@@ -51,6 +53,3 @@ user,pool,block,lpvalue
 Once you provide the repository, we need to execute the following steps:
 * Check if the repo is funcional, test it for small block list
 * Check if the output is accordingly wwhat we need.
-* Please create a folder following this pattern: `tvl-snapshot-<protocol_name>`
-* Add in the script `index.ts` a function to read a CSV file with a block list, this [function](https://github.com/delta-hq/openblocklabs-mode-tvl-adapters/blob/main/adapters/tvl-snapshot-izumi/src/index.ts#L63)
-* Add in the script `index.ts` the hourly blocks as input for the CSV function [example](https://github.com/delta-hq/openblocklabs-mode-tvl-adaptersblob/main/tvl_adapters/adapters/tvl-snapshot-izumi/src/index.ts#L89)
