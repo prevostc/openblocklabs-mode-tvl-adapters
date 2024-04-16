@@ -1,6 +1,6 @@
-# TVL by User - Mode Adapters
+# TVL by User - Mode Adapters - OpenBlock Labs
 
-This repository aims to serve as a source for all adapters we use to fetch TVL (Total Value Locked) by users for protocols on the Mode Chain. The goal is to simplify the process of adding new protocols, making data ingestion straightforward and thereby making the data available for the modeling team to work on point calculations.
+This repository aims to serve as a source for all adapters we use to fetch TVL by users for protocols on the Mode Chain. The goal is to simplify the process of adding new protocols, making data ingestion straightforward and thereby making the data available for the OpenBlock Labs team.
 
 ## How to add new adapters?
 
