@@ -52,4 +52,4 @@ user,pool,block,lpvalue
 
 Once you provide the repository, we need to execute the following steps:
 * Check if the repo is funcional, test it for small block list
-* Check if the output is accordingly wwhat we need.
+* Check if the output is accordingly what we need.
