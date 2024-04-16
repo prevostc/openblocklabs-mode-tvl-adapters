@@ -1,16 +1,13 @@
-import BigNumber from "bignumber.js";
 import { CHAINS, PROTOCOLS, AMM_TYPES } from "./sdk/config";
 import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, getPositionDetailsFromPosition, getPositionsForAddressByPoolAtBlock } from "./sdk/subgraphDetails";
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
 
-import { promisify } from 'util';
-import stream from 'stream';
 import csv from 'csv-parser';
 import fs from 'fs';
-import { format } from 'fast-csv';
 import { write } from 'fast-csv';
+import path from "path";
 
 //Uncomment the following lines to test the getPositionAtBlock function
 
@@ -52,35 +49,35 @@ interface CSVRow {
 }
 
 
-const pipeline = promisify(stream.pipeline);
-
-// Assuming you have the following functions and constants already defined
-// getPositionsForAddressByPoolAtBlock, CHAINS, PROTOCOLS, AMM_TYPES, getPositionDetailsFromPosition, getLPValueByUserAndPoolFromPositions, BigNumber
-
 const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
-  const blocks: number[] = [];
-  await pipeline(
-    fs.createReadStream(filePath),
-    csv(),
-    async function* (source) {
-      for await (const chunk of source) {
-        // Assuming each row in the CSV has a column 'block' with the block number
-        if (chunk.block) blocks.push(parseInt(chunk.block, 10));
-      }
-    }
-  );
-  return blocks;
+  return new Promise((resolve, reject) => {
+    const blocks: number[] = [];
+
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (row) => {
+        for (let key in row) {
+          const blockNumber = parseInt(row[key]);
+          if (!isNaN(blockNumber)) { // Ensure it's a valid number before pushing
+            blocks.push(blockNumber);
+          }
+        }
+      })
+      .on('end', () => {
+        console.log('CSV file successfully processed.');
+        resolve(blocks); // Resolve the promise with the blocks array
+      })
+      .on('error', (error) => {
+        reject(error); // Reject the promise if an error occurs
+      });
+  });
 };
 
 
 const getData = async () => {
-  const snapshotBlocks = [
-    3116208, 3159408, 3202608, 3245808, 3289008, 3332208,
-    3375408, 3418608, 3461808, 3505008, 3548208, 3591408,
-    3634608, 3677808, 3721008, 3764208, 3807408, 3850608,
-    3893808, 3937008, 3980208, 3983003,
-  ]; //await readBlocksFromCSV('src/sdk/mode_chain_daily_blocks.csv');
-  
+  const csvFilePath = path.resolve(__dirname, '../../../../data/mode_supswapv3_hourly_blocks.csv');
+  const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
+
   const csvRows: CSVRow[] = [];
 
   for (let block of snapshotBlocks) {
@@ -112,7 +109,8 @@ const getData = async () => {
   }
 
   // Write the CSV output to a file
-  const ws = fs.createWriteStream('outputData.csv');
+  const outputPath = path.resolve(__dirname, '../../../../data/mode_supswapv3_tvl_snapshot.csv');
+  const ws = fs.createWriteStream(outputPath);
   write(csvRows, { headers: true }).pipe(ws).on('finish', () => {
     console.log("CSV file has been written.");
   });
