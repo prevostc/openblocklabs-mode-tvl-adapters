@@ -112,7 +112,7 @@ const getData = async () => {
     csvRow.positions = vaultPositions.length > 0 ? vaultPositions[0].lowerTick.length: 0;
   }
 
-  const csvOutPath = path.resolve(__dirname, "../../../data/mode_steer_tvl_snapshot.csv");
+  const csvOutPath = path.resolve(__dirname, "../../../../data/mode_steer_tvl_snapshot.csv");
   const ws = fs.createWriteStream(csvOutPath);
   write(csvRows, { headers: true }).pipe(ws).on('finish', () => {
     console.log("CSV file has been written.");

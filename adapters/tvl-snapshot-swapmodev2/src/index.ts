@@ -193,7 +193,7 @@ async function run() {
     }
 
         // Write the CSV output to a file
-    const csvOutPath = path.resolve(__dirname, "../../../data/mode_swapmodev2_tvl_snapshot.csv");
+    const csvOutPath = path.resolve(__dirname, "../../../../data/mode_swapmodev2_tvl_snapshot.csv");
     const ws = fs.createWriteStream(csvOutPath);
     await writeCSV(
       csvOutPath,
