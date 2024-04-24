@@ -39,6 +39,7 @@ interface UserLPData {
 const schema = new ParquetSchema({
   user: { type: 'UTF8' },
   pool: { type: 'UTF8' },
+  pair_name: { type:  'UTF8'},
   block: { type: 'INT64' },
   position: { type: 'INT32' },
   token0_balance: { type: 'FLOAT' },
@@ -49,6 +50,7 @@ const schema = new ParquetSchema({
 interface CSVRow {
   user: string;
   pool: string;
+  pair_name: string;
   block: number;
   position: number;
   token0_balance: string;
@@ -111,6 +113,7 @@ const getData = async () => {
         csvRows.push({
           user: key,
           pool: poolKey,
+          pair_name: lpValue.poolName,
           block,
           position: positions.length, // Adjust if you have a specific way to identify positions
           token0_balance: lpValue.totalToken0.toString(),

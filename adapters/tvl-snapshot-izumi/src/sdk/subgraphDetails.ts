@@ -9,6 +9,7 @@ export interface Position{
     pool: {
         tick: number;
         id: string;
+        feeTier: number;
     };
     leftPt: number;
     rightPt: number;
@@ -39,6 +40,7 @@ export interface PositionWithUSDValue extends Position{
 }
 
 export interface UserPoolInfo {
+    poolName: string
     totalToken0: BigNumber;
     totalToken1: BigNumber;
     totalValue: BigNumber;
@@ -71,6 +73,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
                 pool {
                     tick
                     id
+                    feeTier
                 }
                 leftPt
                 rightPt
@@ -117,6 +120,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
                 pool: {
                     tick: Number(position.pool.tick),
                     id: position.pool.id,
+                    feeTier: position.pool.feeTier,
                 },
                 leftPt: position.leftPt,
                 rightPt: position.rightPt,
@@ -157,11 +161,13 @@ export const getPositionAtBlock = async (
     let subgraphUrl = (SUBGRAPH_URLS as any)[chainId][protocol][ammType];
     let blockQuery = blockNumber !== 0 ? `, block: {number: ${blockNumber}}` : ``;
     let query = `{
-        position(id: "${positionId}" ${blockQuery}) {
+        liquidity(id: "${positionId}" ${blockQuery}) {
             id
+            owner
             pool {
                 id
                 tick
+                feeTier
             }
             leftPt
             rightPt
@@ -194,7 +200,7 @@ export const getPositionAtBlock = async (
         headers: { "Content-Type": "application/json" },
     });
     let data = await response.json();
-    let position = data.data.position;
+    let position = data.data.liquidity;
 
 
     return  {
@@ -204,6 +210,7 @@ export const getPositionAtBlock = async (
             pool: {
                 tick: Number(position.pool.tick),
                 id: position.pool.id,
+                feeTier: position.pool.feeTier,
             },
             leftPt: position.leftPt,
             rightPt: position.rightPt,
@@ -291,7 +298,8 @@ export const getLPValueByUserAndPoolFromPositions = (
         }
         let poolPositions = userPositions.get(poolId);
         if (poolPositions === undefined) {
-            poolPositions = {totalToken0: BigNumber(0), totalToken1: BigNumber(0), totalValue: BigNumber(0)};
+            const poolName = position.tokenX.symbol + '/' + position.tokenY.symbol + ' ' + String(position.pool.feeTier/10000) + '%';
+            poolPositions = {poolName: poolName, totalToken0: BigNumber(0), totalToken1: BigNumber(0), totalValue: BigNumber(0)};
         }
         let positionWithUSDValue = getPositionDetailsFromPosition(position);
         poolPositions.totalToken0 = poolPositions.totalToken0.plus(BigNumber(positionWithUSDValue.token0DecimalValue));
