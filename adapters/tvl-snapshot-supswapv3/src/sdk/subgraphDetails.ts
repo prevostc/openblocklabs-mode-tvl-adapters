@@ -47,6 +47,8 @@ export interface PositionWithUSDValue extends Position{
     token0DecimalValue: number;
     token1DecimalValue: number;
     feeTier: number;
+    token0Symbol: string;
+    token1Symbol: string;
 }
     
 export const getPositionsForAddressByPoolAtBlock = async (
@@ -292,7 +294,7 @@ export const getPositionDetailsFromPosition =  (
     let token1UsdValue = BigNumber(token1AmountsInWei.toString()).multipliedBy(token1DerivedUSD).div(10 ** decimal1).toFixed(4);
 
     let feeTier = position.pool.feeTier;
-    return {...position, token0USDValue: token0UsdValue, token1USDValue: token1UsdValue, token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue, feeTier};
+    return {...position, token0USDValue: token0UsdValue, token1USDValue: token1UsdValue, token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue, feeTier, token0Symbol: position.token0.symbol, token1Symbol: position.token1.symbol};
 
 }
 
