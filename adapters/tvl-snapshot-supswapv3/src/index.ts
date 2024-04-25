@@ -46,6 +46,7 @@ interface CSVRow {
   block: number;
   position: number;
   lpvalue: string;
+  feeTier: number;
 }
 
 
@@ -78,7 +79,7 @@ const getData = async () => {
   const csvFilePath = path.resolve(__dirname, '../../../../data/mode_supswapv3_hourly_blocks.csv');
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
 
-  const csvRows: CSVRow[] = [];
+    const csvRows: CSVRow[] = [];
 
   for (let block of snapshotBlocks) {
     const positions = await getPositionsForAddressByPoolAtBlock(
@@ -103,6 +104,7 @@ const getData = async () => {
           block,
           position: positions.length, // Adjust if you have a specific way to identify positions
           lpvalue: lpValueStr,
+          feeTier: positionsWithUSDValue[positionIndex].feeTier/10000
         });
       });
     });

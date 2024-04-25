@@ -13,6 +13,7 @@ export interface Position{
         sqrtPrice: bigint;
         tick: number;
         id: string;
+        feeTier: number;
     };
     tickLower: {
         tickIdx: number;
@@ -45,6 +46,7 @@ export interface PositionWithUSDValue extends Position{
     token1AmountsInWei: bigint;
     token0DecimalValue: number;
     token1DecimalValue: number;
+    feeTier: number;
 }
     
 export const getPositionsForAddressByPoolAtBlock = async (
@@ -75,6 +77,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
                     sqrtPrice
                     tick
                     id
+                    feeTier
                 }
                 tickLower{
                     tickIdx
@@ -123,6 +126,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
                     sqrtPrice: BigInt(position.pool.sqrtPrice),
                     tick: Number(position.pool.tick),
                     id: position.pool.id,
+                    feeTier: Number(position.pool.feeTier)
                 },
                 tickLower: {
                     tickIdx: Number(position.tickLower.tickIdx),
@@ -219,6 +223,7 @@ export const getPositionAtBlock = async (
                 sqrtPrice: BigInt(position.pool.sqrtPrice),
                 tick: Number(position.pool.tick),
                 id: position.pool.id,
+                feeTier: Number(position.pool.feeTier)
             },
             tickLower: {
                 tickIdx: Number(position.tickLower.tickIdx),
@@ -286,8 +291,8 @@ export const getPositionDetailsFromPosition =  (
     let token0UsdValue = BigNumber(token0AmountsInWei.toString()).multipliedBy(token0DerivedUSD).div(10 ** decimal0).toFixed(4);
     let token1UsdValue = BigNumber(token1AmountsInWei.toString()).multipliedBy(token1DerivedUSD).div(10 ** decimal1).toFixed(4);
 
-
-    return {...position, token0USDValue: token0UsdValue, token1USDValue: token1UsdValue, token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue};
+    let feeTier = position.pool.feeTier;
+    return {...position, token0USDValue: token0UsdValue, token1USDValue: token1UsdValue, token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue, feeTier};
 
 }
 
