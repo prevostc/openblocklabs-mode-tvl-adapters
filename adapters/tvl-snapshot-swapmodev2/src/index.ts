@@ -59,6 +59,10 @@ function getNftInfo(userInfo) {
   const totalNftPoolBalance = new BigNumber(userInfo.balance);
   const totalNftPoolValue = lpPrice.times(totalNftPoolBalance);
 
+  if (!userInfo.pool) {
+    console.log(userInfo);
+  }
+
   return {
     pool: userInfo.pool.lpToken,
     totalNftPoolBalance: totalNftPoolBalance.toString(),
@@ -69,7 +73,7 @@ function getNftInfo(userInfo) {
 async function getUserWalletLps(block: number) {
   //  return readJSON(usersPath);
 
-  console.log("Fetching user wallet LP balances..");
+  // console.log("Fetching user wallet LP balances..");
   const pageSize = 1000;
   let skip = 0;
   let moreToFetch = true;
@@ -115,18 +119,20 @@ async function getUserWalletLps(block: number) {
     skip += pageSize;
 
     userData = [...userData, ...users.users];
-    console.log(`${users.users.length} users`);
+    // console.log(`${users.users.length} users`);
 
     await sleepWaitPromise();
   }
 
   console.log(`${userData.length} total users`);
+  // await writeJSON(usersPath, userData);
+
   return userData;
 }
 
 async function getUserNFTPositionBalances(block: number) {
   // return readJSON(userPositionsPath);
-  console.log("Fetching user NFTPool balances..");
+  // console.log("Fetching user NFTPool balances..");
   const pageSize = 1000;
   let skip = 0;
   let moreToFetch = true;
@@ -181,7 +187,9 @@ async function getNFTPoolAddresses() {
 async function getBlockData(block: number) {
   try {
     const userWalletLps: any[] = await getUserWalletLps(block);
-    const positions: any[] = await getUserNFTPositionBalances(block);
+    let positions: any[] = await getUserNFTPositionBalances(block);
+
+    positions = positions.filter((uw) => uw.user);
 
     let uniqueUserIds = [];
 
@@ -286,6 +294,8 @@ async function getBlockData(block: number) {
         totalLpValue: totalNftPoolValue,
       });
     }
+
+    // await writeJSON(userDataPath, withData);
 
     return withData.map((d) => {
       return {
