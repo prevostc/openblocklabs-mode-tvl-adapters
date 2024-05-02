@@ -3,7 +3,7 @@ import { BigNumber } from "bignumber.js";
 import { ethers } from "ethers";
 import fs from "fs";
 import * as path from "path";
-import csv from 'csv-parser';
+import csv from "csv-parser";
 
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 
@@ -202,7 +202,6 @@ async function getBlockData(block: number) {
         if (pools[pair.id]) return;
 
         const reserveUSD = new BigNumber(pair.reserveUSD);
-        // if (reserveUSD.lt(1000)) continue;
         const totalSupply = new BigNumber(pair.totalSupply);
         const lpPrice = reserveUSD.div(totalSupply);
 
@@ -218,10 +217,6 @@ async function getBlockData(block: number) {
       if (!uniqueUserIds.includes(pos.user.id)) uniqueUserIds.push(pos.user.id);
     }
 
-    const hasBoth = [];
-    const lpOnly = [];
-    const nftOnly = [];
-
     uniqueUserIds = uniqueUserIds.filter(
       (id) =>
         id !== "0x0000000000000000000000000000000000000000" &&
@@ -229,82 +224,58 @@ async function getBlockData(block: number) {
         !nftPoolAddresses.includes(id)
     );
 
-    for (const id of uniqueUserIds) {
-      const lpMatch = userWalletLps.find((u) => u.id === id);
-      const nftMatch = positions.find((p) => p.user.id === id);
+    let allUserPositions = [];
+    // let userTotals = [];
 
-      if (lpMatch && nftMatch) {
-        hasBoth.push(id);
-        continue;
-      }
+    for (const userId of uniqueUserIds) {
+      // Fine if either of these is zero length
+      const walletPositions = userWalletLps.filter((u) => u.id === userId);
+      const nftPositions = positions.filter((p) => p.user.id === userId);
 
-      if (lpMatch) {
-        lpOnly.push(id);
-        continue;
-      }
+      let totalLpValue = BN_ZERO;
 
-      if (nftMatch) {
-        nftOnly.push(id);
-      }
-    }
+      walletPositions.forEach((pos) => {
+        pos.liquidityPositions.forEach((pos) => {
+          const pool = pos.pair.id;
+          const lpPrice = pools[pool]?.lpPrice || BN_ZERO;
+          const positionBalance = new BigNumber(pos.liquidityTokenBalance);
+          const lpvalue = positionBalance.multipliedBy(lpPrice);
 
-    const withData = [];
+          totalLpValue = totalLpValue.plus(lpvalue);
 
-    for (const userId of hasBoth) {
-      const lpMatch = userWalletLps.find((u) => u.id === userId);
-      const nftMatch = positions.find((p) => p.user.id === userId);
-
-      const { totalWalletLpValue } = getLpInfo(lpMatch);
-      const { totalNftPoolBalance, totalNftPoolValue } = getNftInfo(nftMatch);
-
-      const totalLpValue = totalWalletLpValue.plus(totalNftPoolValue);
-
-      withData.push({
-        user: userId,
-        totalWalletLpValue: totalWalletLpValue.toFixed(4),
-        totalNftPoolBalance,
-        totalNftPoolValue,
-        totalLpValue: totalLpValue.toFixed(4),
+          allUserPositions.push({
+            user: userId,
+            pool,
+            lpvalue: lpvalue.toFixed(4),
+            block,
+          });
+        });
       });
-    }
 
-    for (const userId of lpOnly) {
-      const lpMatch = userWalletLps.find((u) => u.id === userId);
-      const { totalWalletLpValue } = getLpInfo(lpMatch);
+      nftPositions.forEach((p) => {
+        const pool = p.pool.lpToken;
+        const lpPrice = pools[pool]?.lpPrice || BN_ZERO;
+        const positionBalance = new BigNumber(p.balance);
+        const lpvalue = positionBalance.multipliedBy(lpPrice);
 
-      withData.push({
-        user: userId,
+        totalLpValue = totalLpValue.plus(lpvalue);
 
-        totalWalletLpValue: totalWalletLpValue.toFixed(4),
-        totalNftPoolBalance: "0",
-        totalNftPoolValue: "0",
-        totalLpValue: totalWalletLpValue.toFixed(4),
+        allUserPositions.push({
+          user: userId,
+          pool,
+          lpValue: lpvalue.toFixed(4),
+          block,
+        });
       });
+
+      // userTotals.push({
+      //   user: userId,
+      //   totalLpValue: totalLpValue.toFixed(4),
+      //   block,
+      // });
     }
 
-    for (const userId of nftOnly) {
-      const nftMatch = positions.find((p) => p.user.id === userId);
-      const { totalNftPoolBalance, totalNftPoolValue, pool } = getNftInfo(nftMatch);
-
-      withData.push({
-        user: userId,
-        pool,
-        totalNftPoolBalance,
-        totalNftPoolValue,
-        totalLpValue: totalNftPoolValue,
-      });
-    }
-
-    // await writeJSON(userDataPath, withData);
-
-    return withData.map((d) => {
-      return {
-        user: d.user,
-        pool: d.pool,
-        lpvalue: d.totalLpValue,
-        block,
-      };
-    });
+    return allUserPositions;
   } catch (error) {
     console.error(error);
   }
@@ -316,19 +287,20 @@ const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
 
     fs.createReadStream(filePath)
       .pipe(csv())
-      .on('data', (row) => {
+      .on("data", (row) => {
         for (let key in row) {
           const blockNumber = parseInt(row[key]);
-          if (!isNaN(blockNumber)) { // Ensure it's a valid number before pushing
+          if (!isNaN(blockNumber)) {
+            // Ensure it's a valid number before pushing
             blocks.push(blockNumber);
           }
         }
       })
-      .on('end', () => {
-        console.log('CSV file successfully processed.');
+      .on("end", () => {
+        console.log("CSV file successfully processed.");
         resolve(blocks); // Resolve the promise with the blocks array
       })
-      .on('error', (error) => {
+      .on("error", (error) => {
         reject(error); // Reject the promise if an error occurs
       });
   });
@@ -353,7 +325,6 @@ async function writeCSV(
   }
 }
 
-
 // Goldsky rate limit of 50 requests per 10 seconds (= 5 per second = 200ms delay. Using buffer with 300ms)
 export function sleepWaitPromise(milliseconds = 500, log = true) {
   if (log) {
@@ -370,7 +341,10 @@ async function run() {
     // const testBlock = 6599713; // 4/17 11:17am EST
     // const fileData = await getBlockData(testBlock);
 
-    const csvFilePath = path.resolve(__dirname, '../../../../data/mode_swapmodev2_hourly_blocks.csv');
+    const csvFilePath = path.resolve(
+      __dirname,
+      "../../../../data/mode_swapmodev2_hourly_blocks.csv"
+    );
     const hourlyBlocks = await readBlocksFromCSV(csvFilePath);
 
     let fileData = [];
@@ -393,7 +367,6 @@ async function run() {
       ],
       fileData
     );
-
   } catch (error) {
     console.log(error);
   }
