@@ -1,5 +1,8 @@
 import { CHAINS, PROTOCOLS, AMM_TYPES } from "./sdk/config";
-import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, getPositionDetailsFromPosition, getPositionsForAddressByPoolAtBlock } from "./sdk/subgraphDetails";
+import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, 
+  getPositionDetailsFromPosition, 
+  getPositionsForAddressByPoolAtBlock, getPoolDetailsFromPositions,
+  getNumberOfPositionsByUserAndPoolFromPositions } from "./sdk/subgraphDetails";
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
@@ -21,7 +24,7 @@ import path from "path";
 // position.then((position) => {
 //     // print response
 //     const result = getPositionDetailsFromPosition(position);
-//     console.log(`${JSON.stringify(result,null, 4)}
+//     logWithTimestamp(`${JSON.stringify(result,null, 4)}
 //     `)
 // });
 
@@ -47,8 +50,19 @@ interface CSVRow {
   position: number;
   lpvalue: string;
   pairName: string;
+  userPoolPositions: number;
 }
 
+const prepareBlockNumbersArr = (startBlockNumber: number, interval: number, endBlockNumber: number) => {
+  const blockNumbers = [];
+  let currentBlockNumber = startBlockNumber;
+  do{
+      blockNumbers.push(currentBlockNumber);
+      currentBlockNumber += interval;
+  }while(currentBlockNumber <= endBlockNumber);
+  
+  return blockNumbers;
+}
 
 const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
   return new Promise((resolve, reject) => {
@@ -65,7 +79,7 @@ const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
         }
       })
       .on('end', () => {
-        console.log('CSV file successfully processed.');
+        logWithTimestamp('CSV file successfully processed.');
         resolve(blocks); // Resolve the promise with the blocks array
       })
       .on('error', (error) => {
@@ -74,53 +88,75 @@ const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
   });
 };
 
-
+// 7383401
 const getData = async () => {
+
   const csvFilePath = path.resolve(__dirname, '../../../../data/mode_supswapv3_hourly_blocks.csv');
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
+  // const snapshotBlocks = prepareBlockNumbersArr(3245809,43200,7383401)
+    logWithTimestamp("Total blocks: "+snapshotBlocks.length)
     
-    const csvRows: CSVRow[] = [];
-
+    // Write the CSV output to a file
+  const outputPath = path.resolve(__dirname, '../../../../data/mode_supswapv3_tvl_snapshot.csv');
+  
+  // const outputPath = path.resolve(__dirname, '../mode_supswapv3_tvl_snapshot.csv');
+  // logWithTimestamp(outputPath)
+  const csvRows: CSVRow[] = [];
   for (let block of snapshotBlocks) {
+   
     const positions = await getPositionsForAddressByPoolAtBlock(
       block, "", "", CHAINS.MODE, PROTOCOLS.SUPSWAP, AMM_TYPES.UNISWAPV3
     );
 
-    console.log(`Block: ${block}`);
-    console.log("Positions: ", positions.length);
+    logWithTimestamp(`Block: ${block}`);
+    logWithTimestamp(`Positions:  ${positions.length}`);
+
+
+    let poolInfo = getPoolDetailsFromPositions(positions)
 
     // Assuming this part of the logic remains the same
     let positionsWithUSDValue = positions.map(getPositionDetailsFromPosition);
     let lpValueByUsers = getLPValueByUserAndPoolFromPositions(positionsWithUSDValue);
+    let numberOfPositionsByUsersAndPool = getNumberOfPositionsByUserAndPoolFromPositions(positionsWithUSDValue)
+    let uniqueUsersCount = 0;
 
     lpValueByUsers.forEach((value, key) => {
+      uniqueUsersCount++;
       let positionIndex = 0; // Define how you track position index
       value.forEach((lpValue, poolKey) => {
         const lpValueStr = lpValue.toString();
+        const poolDetails = poolInfo.get(poolKey)!!
         // Accumulate CSV row data
         csvRows.push({
           user: key,
-          pairName: `${positionsWithUSDValue[positionIndex].token0Symbol}/${positionsWithUSDValue[positionIndex].token1Symbol} ${positionsWithUSDValue[positionIndex].feeTier/10000}%`,
+          pairName: `${poolDetails.token0.symbol}/${poolDetails.token1.symbol} ${poolDetails.feeTier/10000}%`,
           pool: poolKey,
           block,
           position: positions.length, // Adjust if you have a specific way to identify positions
-          lpvalue: lpValueStr
+          lpvalue: lpValueStr,
+          userPoolPositions: Number(numberOfPositionsByUsersAndPool.get(key)?.get(poolKey) ?? 0)
         });
       });
     });
-  }
 
-  // Write the CSV output to a file
-  const outputPath = path.resolve(__dirname, '../../../../data/mode_supswapv3_tvl_snapshot.csv');
-  const ws = fs.createWriteStream(outputPath);
+    logWithTimestamp("Number of Users:"+ uniqueUsersCount)
+   
+  }
+  const ws = fs.createWriteStream(outputPath, { flags: 'a' });
   write(csvRows, { headers: true }).pipe(ws).on('finish', () => {
-    console.log("CSV file has been written.");
+    logWithTimestamp("CSV file has been written.");
   });
 };
-
+logWithTimestamp("Starting...")
 getData().then(() => {
-  console.log("Done");
+  logWithTimestamp("Done");
 });
+function logWithTimestamp(message: string): void {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${message}`);
+}
 // getPrice(new BigNumber('1579427897588720602142863095414958'), 6, 18); //Uniswap
 // getPrice(new BigNumber('3968729022398277600000000'), 18, 6); //SupSwap
+
+
 
