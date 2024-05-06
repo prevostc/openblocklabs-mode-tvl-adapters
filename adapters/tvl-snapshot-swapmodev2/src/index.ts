@@ -326,7 +326,7 @@ async function writeCSV(
 }
 
 // Goldsky rate limit of 50 requests per 10 seconds (= 5 per second = 200ms delay. Using buffer with 300ms)
-export function sleepWaitPromise(milliseconds = 500, log = true) {
+export function sleepWaitPromise(milliseconds = 100, log = true) {
   if (log) {
     console.log(`sleepWaitPromise: waiting delay of ${milliseconds} ms...`);
   }
