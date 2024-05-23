@@ -165,10 +165,9 @@ async function fetchData(blockTimestamp: number): Promise<PositionHistory> {
         QUERY_FIRST,
         skip
       );
-      usersPositionHistoryInModePools = [
-        ...usersPositionHistoryInModePools,
-        ...data.positionHistory,
-      ];
+      usersPositionHistoryInModePools = usersPositionHistoryInModePools.concat(
+        data.positionHistory
+      );
       isQueryingProcessOver = data.isDataFullyQueried;
     }
     return usersPositionHistoryInModePools;
@@ -178,7 +177,7 @@ async function fetchData(blockTimestamp: number): Promise<PositionHistory> {
 function computeBalanceFromAction(
   depositAmount: string,
   payload: ActionPayload
-): BigInt {
+): bigint {
   if (payload.type === "deposit") {
     return BigInt(depositAmount);
   }
@@ -194,7 +193,7 @@ type UserBalances = Record<
   {
     [pool: string]: {
       [positionBalance: string]: {
-        value: BigInt;
+        value: bigint;
         token: { symbol: string; decimals: number; usdValue: number };
       };
     };
@@ -206,10 +205,8 @@ function mapUsersBalances(
   history: PositionHistory
 ): UserBalances {
   const userBalancesMap: UserBalances = {};
-  const filteredHistory = history.filter(
-    (action) => action.blockNumber <= targetedBlock
-  );
-  for (const action of filteredHistory) {
+  for (const action of history) {
+    if (action.blockNumber > targetedBlock) continue;
     const user = action.lender;
     const pool = action.metadata.instanceId;
     const position = action.positionId;
@@ -221,7 +218,7 @@ function mapUsersBalances(
               action.depositAmount,
               action.payload
             ),
-            token: { ...action.instanceToken },
+            token: action.instanceToken,
           },
         },
       };
@@ -229,7 +226,7 @@ function mapUsersBalances(
       if (!userBalancesMap[user][pool]) {
         userBalancesMap[user][pool][position] = {
           value: computeBalanceFromAction(action.depositAmount, action.payload),
-          token: { ...action.instanceToken },
+          token: action.instanceToken,
         };
       } else {
         if (!userBalancesMap[user][pool][position]) {
@@ -238,7 +235,7 @@ function mapUsersBalances(
               action.depositAmount,
               action.payload
             ),
-            token: { ...action.instanceToken },
+            token: action.instanceToken,
           };
         }
       }
@@ -256,16 +253,18 @@ function aggregateBalancesPerUserPerPoolInUsd(
       balances[userAddress]
     ).reduce((userPoolBalances: Record<string, number>, [pool, balances]) => {
       const poolBalance = Object.values(balances).reduce(
-        (acc: number, positionBalance) => {
+        (acc: bigint, positionBalance) => {
           const {
             value,
             token: { usdValue, decimals },
           } = positionBalance;
-          return acc + (Number(value) / Math.pow(10, decimals)) * usdValue;
+          const decimalBigInt = ethers.parseUnits("1", decimals);
+          const fxRateBigInt = ethers.parseUnits(String(usdValue), decimals);
+          return acc + (value * fxRateBigInt) / decimalBigInt / decimalBigInt;
         },
-        0
+        BigInt(0)
       );
-      return { ...userPoolBalances, [pool]: poolBalance };
+      return { ...userPoolBalances, [pool]: Number(poolBalance) };
     }, {});
     aggregatedBalances[userAddress] = aggregatedBalancePerPoolInUsd;
   }
