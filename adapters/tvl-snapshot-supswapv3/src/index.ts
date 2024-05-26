@@ -51,6 +51,8 @@ interface CSVRow {
   lpvalue: string;
   pairName: string;
   userPoolPositions: number;
+  token0Amount: string;
+  token1Amount: string;
 }
 
 const prepareBlockNumbersArr = (startBlockNumber: number, interval: number, endBlockNumber: number) => {
@@ -123,8 +125,8 @@ const getData = async () => {
     lpValueByUsers.forEach((value, key) => {
       uniqueUsersCount++;
       let positionIndex = 0; // Define how you track position index
-      value.forEach((lpValue, poolKey) => {
-        const lpValueStr = lpValue.toString();
+      value.forEach((userAggregatedAssetsInPools, poolKey) => {
+        
         const poolDetails = poolInfo.get(poolKey)!!
         // Accumulate CSV row data
         csvRows.push({
@@ -133,8 +135,10 @@ const getData = async () => {
           pool: poolKey,
           block,
           position: positions.length, // Adjust if you have a specific way to identify positions
-          lpvalue: lpValueStr,
-          userPoolPositions: Number(numberOfPositionsByUsersAndPool.get(key)?.get(poolKey) ?? 0)
+          lpvalue: userAggregatedAssetsInPools.lpValue.toString(),
+          userPoolPositions: Number(numberOfPositionsByUsersAndPool.get(key)?.get(poolKey) ?? 0),
+          token0Amount: userAggregatedAssetsInPools.token0AmountInDecimal.toString(),
+          token1Amount: userAggregatedAssetsInPools.token1AmountInDecimal.toString(),
         });
       });
     });
