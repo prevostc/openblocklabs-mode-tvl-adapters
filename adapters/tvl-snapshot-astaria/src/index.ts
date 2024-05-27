@@ -1,4 +1,4 @@
-import { CHAINS, PROTOCOLS, AMM_TYPES } from "./sdk/config";
+import { CHAINS, PROTOCOLS} from "./sdk/config";
 import { getClosesBeforeBlock, getLPValueByUser, getOpensBeforeBlock } from "./sdk/subgraphDetails";
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
@@ -14,8 +14,6 @@ interface CSVRow {
   token_address: string;
   block: number;
   token_balance: string;
-  date: string;
-  block_timestamp: string;
 }
 
 
@@ -68,8 +66,6 @@ const getData = async () => {
           token_address: lpToken,
           block,
           token_balance: lpValueStr.toFixed(0),
-          date: '2022-01-02', // todo
-          block_timestamp: 'asd' // todo
         });
       });
     });
