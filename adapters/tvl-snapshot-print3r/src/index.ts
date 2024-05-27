@@ -3,7 +3,7 @@ import path from "path";
 import { promisify } from "util";
 import stream from "stream";
 import csv from "csv-parser";
-import { format, write } from "fast-csv";
+import { write } from "fast-csv";
 import { Position } from "./types";
 import { calculateLpValue } from "./utils/price";
 import { getLiquidityProviders } from "./sdk/subgraphDetails";
@@ -14,37 +14,10 @@ interface CSVRow {
   pool: string;
   block: number;
   lpvalue: number;
+  pairName: string;
 }
 
 const pipeline = promisify(stream.pipeline);
-
-/**
- * ======================================== Test ========================================
-
- const testFetchingPositions = async () => {
-   const positions = await getLiquidityProviders(); 
-   const result: CSVRow[] = [];
-   for (let position of positions) {
-     const lpValue = await calculateLpValue(position.amount);
-     result.push({
-       user: position.account,
-       pool: VAULT,
-       block: position.blockNumber,
-       lpvalue: lpValue,
-     });
-   }
-
-   console.log(`${JSON.stringify(result, null, 4)}
-     `);
- };
-
- testFetchingPositions().then(() => {
-   console.log("Data processing complete.");
- });
-
-
- * ======================================================================================
- */
 
 const convertPositionsToCsvRow = async (
   positions: Position[]
@@ -53,26 +26,65 @@ const convertPositionsToCsvRow = async (
 
   for (let position of positions) {
     const lpValue = await calculateLpValue(position.amount);
+    const pairName = "USDC";
     rows.push({
       user: position.account,
       pool: VAULT,
       block: position.blockNumber,
       lpvalue: lpValue,
+      pairName: pairName,
     });
   }
 
   return rows;
 };
 
+const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
+  return new Promise((resolve, reject) => {
+    const blocks: number[] = [];
+
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on("data", (row) => {
+        for (let key in row) {
+          const blockNumber = parseInt(row[key]);
+          if (!isNaN(blockNumber)) {
+            blocks.push(blockNumber);
+          }
+        }
+      })
+      .on("end", () => {
+        console.log("CSV file successfully processed.");
+        resolve(blocks);
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
+  });
+};
+
 const processData = async () => {
+  const csvFilePath = path.resolve(
+    __dirname,
+    "../../../../data/mode_print3r_hourly_blocks.csv"
+  );
+  const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
+
+  const csvRows: CSVRow[] = [];
+
+  for (let block of snapshotBlocks) {
+    const allPositions = await getLiquidityProviders(block);
+
+    const blockCsvRows = await convertPositionsToCsvRow(allPositions);
+
+    csvRows.push(...blockCsvRows);
+  }
+
   const outputPath = path.resolve(
     __dirname,
-    "../../../../data/tvl_hourly_snapshot.csv"
+    "./../../../data/mode_print3r_tvl_snapshot.csv"
   );
   const ws = fs.createWriteStream(outputPath);
-  const positions = await getLiquidityProviders(); // Fetch positions
-
-  const csvRows = await convertPositionsToCsvRow(positions);
 
   write(csvRows, { headers: true })
     .pipe(ws)

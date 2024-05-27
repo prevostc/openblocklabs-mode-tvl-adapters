@@ -1,7 +1,7 @@
 import { CHAINS, PROTOCOLS, SUBGRAPH_URLS } from "./config";
 import { Position } from "../types";
 
-export const getLiquidityProviders = async () => {
+export const getLiquidityProviders = async (block: number) => {
   let subgraphUrl = SUBGRAPH_URLS[CHAINS.MODE][PROTOCOLS.PRINT3R][0];
 
   let skip = 0;
@@ -9,19 +9,16 @@ export const getLiquidityProviders = async () => {
   let liquidityProviders: Position[] = [];
   while (fetchNext) {
     const query = `{
-    brrrStats(
-        where: { period: hourly}
-    ) {
-      account
-      mintAmount
-      timestamp
-    }   
-    _meta {
-        block {
-            number
-        }
-    }
-  }`;
+      brrrStats(
+        where: { period: total, mintAmount_gt: "0", account_not: "0x0000000000000000000000000000000000000000" }
+        first: 1000
+        skip: ${skip}
+      ) {
+        blockNumber
+        account
+        mintAmount
+      }
+    }`;
 
     let response = await fetch(subgraphUrl, {
       method: "POST",
@@ -32,32 +29,37 @@ export const getLiquidityProviders = async () => {
     let data: any = await response.json();
 
     const fetchedProviders = data.data.brrrStats || [];
-    const blockNumber = data.data._meta.block.number;
 
-    const validProviders = fetchedProviders.filter(
-      (provider: any) =>
-        BigInt(provider.mintAmount) > 0 &&
-        provider.account.toLowerCase() !==
-          "0x0000000000000000000000000000000000000000"
-    );
-
-    for (let provider of validProviders) {
+    for (let provider of fetchedProviders) {
+      console.log(
+        "Provider Block Number:",
+        provider.blockNumber,
+        "Type:",
+        typeof provider.blockNumber
+      );
       let transformedPosition: Position = {
         account: provider.account,
         amount: BigInt(provider.mintAmount),
-        blockNumber: blockNumber,
+        blockNumber: parseInt(provider.blockNumber), // Convert to number
       };
       liquidityProviders.push(transformedPosition);
     }
 
-    if (liquidityProviders.length < 1000) {
+    if (fetchedProviders.length < 1000) {
       fetchNext = false;
     } else {
       skip += 1000;
     }
   }
 
-  // Access data property directly from response
+  console.log("Filtering by Block:", block, "Type:", typeof block);
 
-  return liquidityProviders;
+  // Filter the results to only include positions with the specified block number
+  const filteredProviders = liquidityProviders.filter(
+    (provider) => provider.blockNumber === block
+  );
+
+  console.log("Filtered Providers:", filteredProviders);
+
+  return filteredProviders;
 };
