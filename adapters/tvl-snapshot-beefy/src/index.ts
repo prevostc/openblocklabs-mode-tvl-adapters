@@ -86,6 +86,7 @@ export const getUserTVLByBlock = async (
         position: bigint;
         token0_balance: bigint;
         token1_balance: bigint;
+        pairName: string;
       }
     >
   > = {};
@@ -111,6 +112,7 @@ export const getUserTVLByBlock = async (
           (BigInt(position.shares_balance) *
             breakdown.balances[1].vaultBalance) /
           breakdown.vaultTotalSupply,
+        pairName: breakdown.pairName,
       };
   }
 
@@ -121,7 +123,7 @@ export const getUserTVLByBlock = async (
         ([underlying_address, balance]): CSVRow => ({
           user: investor,
           pool: underlying_address,
-          pair_name: "",
+          pair_name: balance.pairName,
           block: blockNumber,
           position: Number(balance.position),
           token0_balance: balance.token0_balance.toString(),

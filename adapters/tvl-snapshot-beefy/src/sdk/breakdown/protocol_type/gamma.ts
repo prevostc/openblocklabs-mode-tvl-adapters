@@ -21,19 +21,28 @@ export const getGammaVaultBreakdown = async (
     abi: GammaHypervisorAbi,
   });
 
-  const [balance, vaultTotalSupply, totalSupply, totalAmounts, token0, token1] =
-    await Promise.all([
-      vaultContract.read.balance({ blockNumber }),
-      vaultContract.read.totalSupply({ blockNumber }),
-      hypervisorContract.read.totalSupply({ blockNumber }),
-      hypervisorContract.read.getTotalAmounts({ blockNumber }),
-      hypervisorContract.read.token0({ blockNumber }),
-      hypervisorContract.read.token1({ blockNumber }),
-    ]);
+  const [
+    balance,
+    vaultTotalSupply,
+    pairName,
+    totalSupply,
+    totalAmounts,
+    token0,
+    token1,
+  ] = await Promise.all([
+    vaultContract.read.balance({ blockNumber }),
+    vaultContract.read.totalSupply({ blockNumber }),
+    hypervisorContract.read.name({ blockNumber }),
+    hypervisorContract.read.totalSupply({ blockNumber }),
+    hypervisorContract.read.getTotalAmounts({ blockNumber }),
+    hypervisorContract.read.token0({ blockNumber }),
+    hypervisorContract.read.token1({ blockNumber }),
+  ]);
 
   return {
     vault,
     blockNumber,
+    pairName,
     vaultTotalSupply,
     balances: [
       {

@@ -21,10 +21,11 @@ export const getSolidlyVaultBreakdown = async (
     abi: SolidlyPoolAbi,
   });
 
-  const [balance, vaultTotalSupply, totalSupply, poolMetadata] =
+  const [balance, vaultTotalSupply, pairName, totalSupply, poolMetadata] =
     await Promise.all([
       vaultContract.read.balance({ blockNumber }),
       vaultContract.read.totalSupply({ blockNumber }),
+      poolContract.read.name({ blockNumber }),
       poolContract.read.totalSupply({ blockNumber }),
       poolContract.read.metadata({ blockNumber }),
     ]);
@@ -37,6 +38,7 @@ export const getSolidlyVaultBreakdown = async (
   return {
     vault,
     blockNumber,
+    pairName,
     vaultTotalSupply,
     balances: [
       {

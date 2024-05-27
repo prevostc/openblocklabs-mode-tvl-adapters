@@ -23,6 +23,7 @@ export const getMendiVaultBreakdown = async (
   return {
     vault,
     blockNumber,
+    pairName: "", // unused
     vaultTotalSupply,
     balances: [
       {
