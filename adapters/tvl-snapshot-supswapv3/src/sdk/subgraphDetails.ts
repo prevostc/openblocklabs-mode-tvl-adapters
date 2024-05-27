@@ -2,6 +2,25 @@ import BigNumber from "bignumber.js";
 import { AMM_TYPES, CHAINS, PROTOCOLS, SUBGRAPH_URLS } from "./config";
 import { PositionMath } from "./utils/positionMath";
 
+export interface UserAggregatedAssetsInPools{
+    token0AmountInWei: bigint;
+    token1AmountInWei: bigint;
+    token0AmountInDecimal: BigNumber;
+    token1AmountInDecimal: BigNumber;
+    lpValue: BigNumber;
+}
+export interface PoolDetails{
+    token0: TokenDetails;
+    token1: TokenDetails;
+    feeTier: number;
+}
+
+export interface TokenDetails{
+    id: string;
+    decimals: number;
+    name: string;
+    symbol: string;
+}
 
 
 
@@ -271,6 +290,23 @@ export const getPositionAtBlock = async (
 
     // return [position.token0, position.token1,token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue,token0UsdValue, token1UsdValue,data.data._meta];
 }
+export const getPoolDetailsFromPositions = (positions: Position[]): Map<string, PoolDetails> => {
+    let result = new Map<string, PoolDetails>();
+    for (let i = 0; i < positions.length; i++) {
+        let position = positions[i];
+        let poolId = position.pool.id;
+        let poolDetails = result.get(poolId);
+        if (poolDetails === undefined) {
+            poolDetails = {
+                token0: position.token0,
+                token1: position.token1,
+                feeTier: position.pool.feeTier,
+            }
+            result.set(poolId, poolDetails);
+        }
+    }
+    return result;
+}
 
 export const getPositionDetailsFromPosition =  (
     position: Position
@@ -300,23 +336,55 @@ export const getPositionDetailsFromPosition =  (
 
 export const getLPValueByUserAndPoolFromPositions = (
     positions: Position[]
-): Map<string, Map<string, BigNumber>> => {
-    let result = new Map<string, Map<string, BigNumber>>();
+): Map<string, Map<string, UserAggregatedAssetsInPools>> => {
+    let result = new Map<string, Map<string, UserAggregatedAssetsInPools>>();
     for (let i = 0; i < positions.length; i++) {
         let position = positions[i];
         let poolId = position.pool.id;
         let owner = position.owner;
         let userPositions = result.get(owner);
         if (userPositions === undefined) {
-            userPositions = new Map<string, BigNumber>();
+            userPositions = new Map<string, UserAggregatedAssetsInPools>();
             result.set(owner, userPositions);
         }
         let poolPositions = userPositions.get(poolId);
         if (poolPositions === undefined) {
-            poolPositions = BigNumber(0);
+            poolPositions = {
+                token0AmountInWei: BigInt(0),
+                token1AmountInWei: BigInt(0),
+                token0AmountInDecimal: BigNumber(0),
+                token1AmountInDecimal: BigNumber(0),
+                lpValue: BigNumber(0)
+            }
         }
         let positionWithUSDValue = getPositionDetailsFromPosition(position);
-        poolPositions = poolPositions.plus(BigNumber(positionWithUSDValue.token0USDValue).plus(positionWithUSDValue.token1USDValue));
+        poolPositions.lpValue = poolPositions.lpValue.plus(BigNumber(positionWithUSDValue.token0USDValue).plus(BigNumber(positionWithUSDValue.token1USDValue)));
+        poolPositions.token0AmountInWei = poolPositions.token0AmountInWei + (positionWithUSDValue.token0AmountsInWei);
+        poolPositions.token1AmountInWei = poolPositions.token1AmountInWei + (positionWithUSDValue.token1AmountsInWei);
+        poolPositions.token0AmountInDecimal = poolPositions.token0AmountInDecimal.plus(positionWithUSDValue.token0DecimalValue);
+        poolPositions.token1AmountInDecimal = poolPositions.token1AmountInDecimal.plus(positionWithUSDValue.token1DecimalValue);
+        userPositions.set(poolId, poolPositions);
+    }
+    return result;
+}
+export const getNumberOfPositionsByUserAndPoolFromPositions = (
+    positions: Position[]
+): Map<string, Map<string, Number>> => {
+    let result = new Map<string, Map<string, Number>>();
+    for (let i = 0; i < positions.length; i++) {
+        let position = positions[i];
+        let poolId = position.pool.id;
+        let owner = position.owner;
+        let userPositions = result.get(owner);
+        if (userPositions === undefined) {
+            userPositions = new Map<string, Number>();
+            result.set(owner, userPositions);
+        }
+        let poolPositions = userPositions.get(poolId);
+        if (poolPositions === undefined) {
+            poolPositions = 0;
+        }
+        poolPositions = Number(poolPositions)+1
         userPositions.set(poolId, poolPositions);
     }
     return result;
