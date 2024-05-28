@@ -24,6 +24,7 @@ export const getGammaVaultBreakdown = async (
   const [
     balance,
     vaultTotalSupply,
+    pairName,
     totalSupply,
     basePosition,
     limitPosition,
@@ -32,6 +33,7 @@ export const getGammaVaultBreakdown = async (
   ] = await Promise.all([
     vaultContract.read.balance({ blockNumber }),
     vaultContract.read.totalSupply({ blockNumber }),
+    almContract.read.name({ blockNumber }),
     almContract.read.totalSupply({ blockNumber }),
     almContract.read.getBasePosition({ blockNumber }),
     almContract.read.getLimitPosition({ blockNumber }),
@@ -45,6 +47,7 @@ export const getGammaVaultBreakdown = async (
   return {
     vault,
     blockNumber,
+    pairName,
     vaultTotalSupply,
     balances: [
       {

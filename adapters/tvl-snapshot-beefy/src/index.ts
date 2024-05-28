@@ -50,7 +50,9 @@ interface CSVRow {
   pair_name: string;
   block: number;
   position: number;
+  token0_address: string;
   token0_balance: string;
+  token1_address: string;
   token1_balance: string;
   lpvalue: string;
 }
@@ -84,8 +86,11 @@ export const getUserTVLByBlock = async (
       Hex /* pool */,
       {
         position: bigint;
+        token0_address: Hex;
         token0_balance: bigint;
+        token1_address: Hex;
         token1_balance: bigint;
+        pairName: string;
       }
     >
   > = {};
@@ -103,14 +108,17 @@ export const getUserTVLByBlock = async (
     investorTokenBalances[position.user_address][position.underlying_address] =
       {
         position: BigInt(position.shares_balance),
+        token0_address: breakdown.balances[0].tokenAddress,
         token0_balance:
           (BigInt(position.shares_balance) *
             breakdown.balances[0].vaultBalance) /
           breakdown.vaultTotalSupply,
+        token1_address: breakdown.balances[1].tokenAddress,
         token1_balance:
           (BigInt(position.shares_balance) *
             breakdown.balances[1].vaultBalance) /
           breakdown.vaultTotalSupply,
+        pairName: breakdown.pairName,
       };
   }
 
@@ -121,10 +129,12 @@ export const getUserTVLByBlock = async (
         ([underlying_address, balance]): CSVRow => ({
           user: investor,
           pool: underlying_address,
-          pair_name: "",
+          pair_name: balance.pairName,
           block: blockNumber,
           position: Number(balance.position),
+          token0_address: balance.token0_address,
           token0_balance: balance.token0_balance.toString(),
+          token1_address: balance.token1_address,
           token1_balance: balance.token1_balance.toString(),
           lpvalue: "",
         })

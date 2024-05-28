@@ -1,6 +1,19 @@
 export const SolidlyPoolAbi = [
   {
     inputs: [],
+    name: "name",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "metadata",
     outputs: [
       { internalType: "uint256", name: "dec0", type: "uint256" },
