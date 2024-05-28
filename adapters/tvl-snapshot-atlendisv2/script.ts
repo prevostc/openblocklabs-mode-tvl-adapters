@@ -13,6 +13,7 @@ const QUERY_FIRST = 100;
 type CSVRow = {
   user: string;
   pool: string;
+  poolAddress: string;
   block: number;
   lpvalue: number;
 };
@@ -54,6 +55,41 @@ async function mapBlockNumberToBlockTimestamp(
     mappedBlocks.set(blockNumber, block.timestamp);
   }
   return mappedBlocks;
+}
+
+type Rcl = { address: string; instanceId: string };
+
+const rclsQuery = `query RclsOnMode($chainId: Int!){
+  rcls(chainId: $chainId){
+    address
+    instanceId
+  }
+}`;
+
+async function getPoolsOnMode(): Promise<Rcl[]> {
+  try {
+    const response = await axios.post(ATLENDIS_API_URL, {
+      query: rclsQuery,
+      variables: {
+        chainId: MODE_NETWORK_CHAIN_ID,
+      },
+    });
+    const {
+      data: { rcls },
+    } = response.data as { data: { rcls: Rcl[] } };
+    return rcls;
+  } catch (err) {
+    console.log((err as Error).stack);
+    throw new Error("Something went wrong");
+  }
+}
+
+function mapPoolsInstanceIdToAddress(pools: Rcl[]): Map<string, string> {
+  const poolsMap = new Map<string, string>();
+  for (const pool of pools) {
+    poolsMap.set(pool.instanceId, pool.address);
+  }
+  return poolsMap;
 }
 
 type ActionPayload =
@@ -274,7 +310,7 @@ function aggregateBalancesPerUserPerPoolInUsd(
 async function run() {
   const csvFilePath = path.resolve(
     __dirname,
-    "./data/mode_atlendisv2_hourly_blocks.csv" // TO BE UPDATED
+    "./data/mode_atlendisv2_hourly_blocks.csv"
   );
 
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
@@ -287,6 +323,8 @@ async function run() {
     throw new Error("Failed to retrieve last blocktimestamp");
   }
 
+  const pools = await getPoolsOnMode();
+  const poolsInstanceIdToAddressMap = mapPoolsInstanceIdToAddress(pools);
   const data = await fetchData(latestBlockTimestamp);
   const csvRows: CSVRow[] = [];
 
@@ -296,12 +334,17 @@ async function run() {
     const csvRowsForBlock: CSVRow[] = Object.entries(aggBalances).reduce(
       (acc: CSVRow[], [user, balancePerPool]) => {
         const userRows: CSVRow[] = Object.entries(balancePerPool).map(
-          ([pool, lpvalue]) => ({
-            user,
-            pool,
-            block,
-            lpvalue,
-          })
+          ([pool, lpvalue]) => {
+            const poolAddress = poolsInstanceIdToAddressMap.get(pool);
+            if (!poolAddress) throw new Error("No such pool");
+            return {
+              user,
+              pool,
+              poolAddress,
+              block,
+              lpvalue,
+            };
+          }
         );
         return [...acc, ...userRows];
       },
@@ -312,7 +355,7 @@ async function run() {
 
   const outputPath = path.resolve(
     __dirname,
-    "./data/mode_atlendisv2_tvl_snapshot.csv" // TO BE UPDATED
+    "./data/mode_atlendisv2_tvl_snapshot.csv"
   );
   const ws = fs.createWriteStream(outputPath);
   write(csvRows, { headers: true })
