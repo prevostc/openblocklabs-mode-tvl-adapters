@@ -1,4 +1,4 @@
-import { CHAINS, PROTOCOLS} from "./sdk/config";
+import { CHAINS, PROTOCOLS } from "./sdk/config";
 import { getClosesBeforeBlock, getLPValueByUser, getOpensBeforeBlock } from "./sdk/subgraphDetails";
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
@@ -16,6 +16,14 @@ interface CSVRow {
   token_balance: string;
 }
 
+// Goldsky rate limit of 50 requests per 10 seconds (= 5 per second = 200ms delay. Using buffer with 300ms)
+const sleepWaitPromise = (milliseconds = 100, log = true) => {
+  if (log) {
+    console.log(`sleepWaitPromise: waiting delay of ${milliseconds} ms...`);
+  }
+
+  return new Promise((res) => setTimeout(() => res(null), milliseconds));
+}
 
 const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
   return new Promise((resolve, reject) => {
@@ -69,6 +77,7 @@ const getData = async () => {
         });
       });
     });
+    await sleepWaitPromise();
   }
 
   // Write the CSV output to a file
