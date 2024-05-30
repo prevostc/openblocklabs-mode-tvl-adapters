@@ -77,7 +77,7 @@ const getData = async () => {
         });
       });
     });
-    await sleepWaitPromise();
+    await sleepWaitPromise(500);
   }
 
   // Write the CSV output to a file
