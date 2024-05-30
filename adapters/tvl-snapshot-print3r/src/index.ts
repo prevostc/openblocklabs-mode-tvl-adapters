@@ -82,7 +82,7 @@ const processData = async () => {
 
   const outputPath = path.resolve(
     __dirname,
-    "./../../../data/mode_print3r_tvl_snapshot.csv"
+    "../../../../data/mode_print3r_tvl_snapshot.csv"
   );
   const ws = fs.createWriteStream(outputPath);
 
