@@ -20,7 +20,8 @@ interface CSVRow {
 const pipeline = promisify(stream.pipeline);
 
 const convertPositionsToCsvRow = async (
-  positions: Position[]
+  positions: Position[],
+  block: number
 ): Promise<CSVRow[]> => {
   const rows: CSVRow[] = [];
 
@@ -30,7 +31,7 @@ const convertPositionsToCsvRow = async (
     rows.push({
       user: position.account,
       pool: VAULT,
-      block: position.blockNumber,
+      block: block,
       lpvalue: lpValue,
       pairName: pairName,
     });
@@ -75,7 +76,7 @@ const processData = async () => {
   for (let block of snapshotBlocks) {
     const allPositions = await getLiquidityProviders(block);
 
-    const blockCsvRows = await convertPositionsToCsvRow(allPositions);
+    const blockCsvRows = await convertPositionsToCsvRow(allPositions, block);
 
     csvRows.push(...blockCsvRows);
   }
