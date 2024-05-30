@@ -136,7 +136,7 @@ export const getUserTVLByBlock = async (
           token0_balance: balance.token0_balance.toString(),
           token1_address: balance.token1_address,
           token1_balance: balance.token1_balance.toString(),
-          lpvalue: "",
+          lpvalue: "0",
         })
       )
     )
