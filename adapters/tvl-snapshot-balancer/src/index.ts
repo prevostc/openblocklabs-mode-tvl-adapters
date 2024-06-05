@@ -37,8 +37,8 @@ export const getV2PoolSharesAtBlock = async (
       query {
         poolShares(
           first: 1000,
-          where: { id_gt: "${latestId}" },
-          block: { number: ${blockNumber} }
+          block: { number: ${blockNumber} },
+          where: { id_gt: "${latestId}" balance_gt: 0 }
         ) {
           id
           userAddress {
