@@ -280,10 +280,16 @@ function mapUsersBalances(
   return userBalancesMap;
 }
 
+function roundToDecimals(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
 function aggregateBalancesPerUserPerPoolInUsd(
   balances: UserBalances
 ): Record<string, Record<string, number>> {
   const aggregatedBalances: Record<string, Record<string, number>> = {};
+  
   for (const userAddress in balances) {
     const aggregatedBalancePerPoolInUsd = Object.entries(
       balances[userAddress]
@@ -295,7 +301,8 @@ function aggregateBalancesPerUserPerPoolInUsd(
             token: { usdValue, decimals },
           } = positionBalance;
           const decimalBigInt = ethers.parseUnits("1", decimals);
-          const fxRateBigInt = ethers.parseUnits(String(usdValue), decimals);
+          const roundedUsdValue = roundToDecimals(usdValue, decimals);
+          const fxRateBigInt = ethers.parseUnits(String(roundedUsdValue), decimals);
           return acc + (value * fxRateBigInt) / decimalBigInt / decimalBigInt;
         },
         BigInt(0)
@@ -310,7 +317,7 @@ function aggregateBalancesPerUserPerPoolInUsd(
 async function run() {
   const csvFilePath = path.resolve(
     __dirname,
-    "./data/mode_atlendisv2_hourly_blocks.csv"
+    "../../../data/mode_atlendisv2_hourly_blocks.csv"
   );
 
   const snapshotBlocks = await readBlocksFromCSV(csvFilePath);
@@ -355,7 +362,7 @@ async function run() {
 
   const outputPath = path.resolve(
     __dirname,
-    "./data/mode_atlendisv2_tvl_snapshot.csv"
+    "../../../data/mode_atlendisv2_tvl_snapshot.csv"
   );
   const ws = fs.createWriteStream(outputPath);
   write(csvRows, { headers: true })
