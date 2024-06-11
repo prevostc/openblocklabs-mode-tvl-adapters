@@ -3,7 +3,7 @@ import csv from "csv-parser";
 import path from "path";
 import { write } from "fast-csv";
 import axios from "axios";
-import { ethers } from "ethers";
+import { ethers, parseUnits } from "ethers";
 
 const ATLENDIS_API_URL = "https://atlendis.herokuapp.com/graphql";
 const MODE_NETWORK_CHAIN_ID = 34443;
@@ -98,9 +98,21 @@ type ActionPayload =
       type: "partialWithdrawal" | "withdrawal";
       receivedAmount: string;
       fees: string;
+    }
+  | {
+      type: "repay";
+      repaidAmount: string;
+      interest: string;
+      interestFee: string;
+    }
+  | {
+      type: "borrow" | "rollover";
+      projectedInterest: string;
+      maturity: number;
     };
 
 type PositionHistory = {
+  blockTimestamp: number;
   blockNumber: number;
   positionId: string;
   lender: string;
@@ -121,11 +133,12 @@ const positionHistoryQuery = `query LenderPositionHistoryOnMode($chainId: Int!, 
     where: {
       chainId: $chainId
       blockTimestamp_lte: $end
-      type_in: [deposit, partialWithdrawal, withdrawal]
+      type_in: [deposit, partialWithdrawal, withdrawal, borrow, rollover, repay]
     }, 
     first: $first, 
     skip: $skip
   ) {
+    blockTimestamp
     blockNumber
     positionId
     lender
@@ -146,6 +159,17 @@ const positionHistoryQuery = `query LenderPositionHistoryOnMode($chainId: Int!, 
         type
         receivedAmount
         fees
+      }
+      ... on BorrowPositionHistoryItemPayload {
+        type
+        borrowedAmount
+        projectedInterest
+        maturity
+      }
+      ... on RepayPositionHistoryItemPayload {
+        type
+        interest
+        interestFee
       }
     }
   }
@@ -211,17 +235,51 @@ async function fetchData(blockTimestamp: number): Promise<PositionHistory> {
 }
 
 function computeBalanceFromAction(
+  targetBlockTimestamp: number,
+  actionTimestamp: number,
   depositAmount: string,
-  payload: ActionPayload
+  payload: ActionPayload,
+  decimals: number
 ): bigint {
   if (payload.type === "deposit") {
     return BigInt(depositAmount);
   }
-  return (
-    BigInt(depositAmount) -
-    BigInt(payload.receivedAmount) -
-    BigInt(payload.fees)
-  );
+  if (payload.type === "withdrawal" || payload.type === "partialWithdrawal") {
+    return (
+      BigInt(depositAmount) -
+      BigInt(payload.receivedAmount) -
+      BigInt(payload.fees)
+    );
+  }
+  if (payload.type === "borrow" || payload.type === "rollover") {
+    if (targetBlockTimestamp < actionTimestamp) {
+      return BigInt(depositAmount);
+    }
+    if (targetBlockTimestamp <= payload.maturity) {
+      const accruedPercentage =
+        (targetBlockTimestamp - actionTimestamp) /
+        (payload.maturity - actionTimestamp);
+      const accruedPercentageBigInt = ethers.parseUnits(
+        accruedPercentage.toPrecision(2),
+        decimals
+      );
+      return (
+        BigInt(depositAmount) +
+        (BigInt(payload.projectedInterest) * accruedPercentageBigInt) /
+          parseUnits("1", decimals)
+      );
+    }
+    return BigInt(depositAmount) + BigInt(payload.projectedInterest);
+  }
+  if (payload.type === "repay") {
+    return (
+      BigInt(depositAmount) +
+      BigInt(payload.interest) -
+      BigInt(payload.interestFee)
+    );
+  }
+  // default
+  return BigInt(depositAmount);
 }
 
 type UserBalances = Record<
@@ -237,6 +295,7 @@ type UserBalances = Record<
 >;
 
 function mapUsersBalances(
+  targetedBlockTimestamp: number,
   targetedBlock: number,
   history: PositionHistory
 ): UserBalances {
@@ -251,8 +310,11 @@ function mapUsersBalances(
         [pool]: {
           [position]: {
             value: computeBalanceFromAction(
+              targetedBlockTimestamp,
+              action.blockTimestamp,
               action.depositAmount,
-              action.payload
+              action.payload,
+              action.instanceToken.decimals
             ),
             token: action.instanceToken,
           },
@@ -261,15 +323,24 @@ function mapUsersBalances(
     } else {
       if (!userBalancesMap[user][pool]) {
         userBalancesMap[user][pool][position] = {
-          value: computeBalanceFromAction(action.depositAmount, action.payload),
+          value: computeBalanceFromAction(
+            targetedBlockTimestamp,
+            action.blockTimestamp,
+            action.depositAmount,
+            action.payload,
+            action.instanceToken.decimals
+          ),
           token: action.instanceToken,
         };
       } else {
         if (!userBalancesMap[user][pool][position]) {
           userBalancesMap[user][pool][position] = {
             value: computeBalanceFromAction(
+              targetedBlockTimestamp,
+              action.blockTimestamp,
               action.depositAmount,
-              action.payload
+              action.payload,
+              action.instanceToken.decimals
             ),
             token: action.instanceToken,
           };
@@ -289,7 +360,7 @@ function aggregateBalancesPerUserPerPoolInUsd(
   balances: UserBalances
 ): Record<string, Record<string, number>> {
   const aggregatedBalances: Record<string, Record<string, number>> = {};
-  
+
   for (const userAddress in balances) {
     const aggregatedBalancePerPoolInUsd = Object.entries(
       balances[userAddress]
@@ -302,7 +373,10 @@ function aggregateBalancesPerUserPerPoolInUsd(
           } = positionBalance;
           const decimalBigInt = ethers.parseUnits("1", decimals);
           const roundedUsdValue = roundToDecimals(usdValue, decimals);
-          const fxRateBigInt = ethers.parseUnits(String(roundedUsdValue), decimals);
+          const fxRateBigInt = ethers.parseUnits(
+            String(roundedUsdValue),
+            decimals
+          );
           return acc + (value * fxRateBigInt) / decimalBigInt / decimalBigInt;
         },
         BigInt(0)
@@ -336,7 +410,8 @@ async function run() {
   const csvRows: CSVRow[] = [];
 
   for (let block of snapshotBlocks) {
-    const balances = mapUsersBalances(block, data);
+    const blockTimestamp = blockNumberToBlockTimestampMap.get(block) as number;
+    const balances = mapUsersBalances(blockTimestamp, block, data);
     const aggBalances = aggregateBalancesPerUserPerPoolInUsd(balances);
     const csvRowsForBlock: CSVRow[] = Object.entries(aggBalances).reduce(
       (acc: CSVRow[], [user, balancePerPool]) => {
