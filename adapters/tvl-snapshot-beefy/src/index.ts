@@ -7,7 +7,7 @@ import fs from "fs";
 import { write } from "fast-csv";
 import path from "path";
 import { getBeefyVaultConfig } from "./sdk/vault/getBeefyVaultConfig";
-import { getVaultShareTokenBalances } from "./sdk/vault/getVaultShareTokenBalances";
+import { getTokenBalances } from "./sdk/vault/getTokenBalances";
 import { uniq } from "lodash";
 import { getVaultBreakdowns } from "./sdk/breakdown/getVaultBreakdown";
 import { BeefyVaultBreakdown } from "./sdk/breakdown/types";
@@ -62,11 +62,11 @@ export const getUserTVLByBlock = async (
 ): Promise<CSVRow[]> => {
   const [vaultConfigs, investorPositions] = await Promise.all([
     getBeefyVaultConfig("mode"),
-    getVaultShareTokenBalances(BigInt(blockNumber)),
+    getTokenBalances(BigInt(blockNumber)),
   ]);
 
   const vaultAddressWithActivePosition = uniq(
-    investorPositions.map((pos) => pos.vault_address.toLowerCase())
+    investorPositions.map((pos) => pos.token_address.toLowerCase())
   );
   const vaults = vaultConfigs.filter((vault) =>
     vaultAddressWithActivePosition.includes(vault.vault_address)
@@ -95,7 +95,7 @@ export const getUserTVLByBlock = async (
     >
   > = {};
   for (const position of investorPositions) {
-    const breakdown = breakdownByVaultAddress[position.vault_address];
+    const breakdown = breakdownByVaultAddress[position.token_address];
     if (!breakdown) {
       // some test vaults were never available in the api
       continue;
@@ -105,21 +105,20 @@ export const getUserTVLByBlock = async (
       investorTokenBalances[position.user_address] = {};
     }
 
-    investorTokenBalances[position.user_address][position.underlying_address] =
-      {
-        position: BigInt(position.shares_balance),
-        token0_address: breakdown.balances[0].tokenAddress,
-        token0_balance:
-          (BigInt(position.shares_balance) *
-            breakdown.balances[0].vaultBalance) /
-          breakdown.vaultTotalSupply,
-        token1_address: breakdown.balances[1].tokenAddress,
-        token1_balance:
-          (BigInt(position.shares_balance) *
-            breakdown.balances[1].vaultBalance) /
-          breakdown.vaultTotalSupply,
-        pairName: breakdown.pairName,
-      };
+    investorTokenBalances[position.user_address][
+      breakdown.vault.undelying_lp_address
+    ] = {
+      position: BigInt(position.balance),
+      token0_address: breakdown.balances[0].tokenAddress,
+      token0_balance:
+        (BigInt(position.balance) * breakdown.balances[0].vaultBalance) /
+        breakdown.vaultTotalSupply,
+      token1_address: breakdown.balances[1].tokenAddress,
+      token1_balance:
+        (BigInt(position.balance) * breakdown.balances[1].vaultBalance) /
+        breakdown.vaultTotalSupply,
+      pairName: breakdown.pairName,
+    };
   }
 
   // format output
